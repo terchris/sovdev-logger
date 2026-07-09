@@ -76,7 +76,7 @@ jobs:
           npm install ./$PACKAGE
 
           # Verify import works
-          node -e "const logger = require('@sovdev/logger'); console.log('✅ Package imports successfully');"
+          node -e "const logger = require('@norwegianredcross/sovdev-logger'); console.log('✅ Package imports successfully');"
 
       - name: Upload build artifacts
         if: matrix.node-version == 20
