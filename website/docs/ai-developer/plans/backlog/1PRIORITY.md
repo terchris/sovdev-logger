@@ -24,7 +24,7 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-09 — `INVESTIGATE-grafana-cloud-validator.md` moved from Tier 4 to Tier 3: most design questions are now decided and `tools/validation/grafana/` is actively scaffolded, blocked only on the maintainer generating real Grafana Cloud tokens and confirming two endpoint paths.
+**Last triaged:** 2026-07-09 — `INVESTIGATE-grafana-cloud-validator.md`: all three signals (Loki/Tempo/Prometheus) now confirmed working live against a real stack. Only remaining gap is wiring up OTLP ingestion, so it stays in Tier 3 rather than moving to done.
 
 ---
 
@@ -38,7 +38,7 @@ _(none yet)_
 
 ## Tier 3 — blocked
 
-- [`INVESTIGATE-grafana-cloud-validator.md`](INVESTIGATE-grafana-cloud-validator.md) — building the TypeScript verification program for Grafana Cloud. Location/structure/credential decisions made (`tools/validation/grafana/`); `query-loki.ts` implemented and type-checked but never run against the live endpoint. Blocked on: the maintainer creating the `sovdev-logger-ingest`/`sovdev-logger-verify` access policies + tokens, and confirming the real Tempo/Prometheus query paths (two curl variants each, pending).
+- [`INVESTIGATE-grafana-cloud-validator.md`](INVESTIGATE-grafana-cloud-validator.md) — building the TypeScript verification program for Grafana Cloud. All three query/auth scripts (`query-loki.ts`/`query-tempo.ts`/`query-prometheus.ts`) implemented and confirmed working live via `check-connection.ts` (13/13 checks pass). Blocked only on wiring up OTLP ingestion so there's real telemetry to run `--compare-with` against.
 
 ## Tier 4 — investigated, undecided
 

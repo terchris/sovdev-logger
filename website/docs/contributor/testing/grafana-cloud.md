@@ -8,7 +8,7 @@ description: "Verify sovdev-logger against Grafana Cloud's hosted Loki/Tempo/Mim
 # Testing against Grafana Cloud
 
 :::note Draft
-Loki verification is confirmed working end-to-end against a live stack. Tempo and Prometheus/Mimir are still blocked on confirming their real query paths — see [`INVESTIGATE-grafana-cloud-validator.md`](../../ai-developer/plans/backlog/INVESTIGATE-grafana-cloud-validator.md) for current status. Sections below reflect what's actually been done, not what's assumed.
+All three signals (Loki/Tempo/Prometheus) are confirmed working end-to-end against a live stack. The remaining gap is wiring up OTLP ingestion (see the last section below) — until that's done, queries correctly return zero results, since nothing's actually been pushed yet. See [`INVESTIGATE-grafana-cloud-validator.md`](../../ai-developer/plans/backlog/INVESTIGATE-grafana-cloud-validator.md) for current status.
 :::
 
 Grafana Cloud's free tier hosts the same Loki (logs), Tempo (traces), and Mimir (Prometheus-compatible metrics) that [UIS](uis.md) runs locally — same query APIs, no self-hosted Kubernetes cluster required. This is the "I don't want to run Rancher Desktop just to try this library" path.
@@ -63,28 +63,36 @@ set -a && source .env && set +a
 npx tsx check-connection.ts
 ```
 
-This checks that every variable is set and sane (valid `https://` URL, numeric Instance ID, token long enough and has the expected `glc_` prefix) — then makes a **real** query against Loki to confirm auth and the query path actually work, not just that the variables look plausible. Confirmed working:
+This checks that every variable is set and sane (valid `https://` URL, numeric Instance ID, token long enough and has the expected `glc_` prefix) — then makes a **real** query against all three signals to confirm auth and the query path actually work, not just that the variables look plausible. Confirmed working, all 13 checks pass on a real stack:
 
 ```
-✅ Loki connection: query succeeded, status=success
+[11] ✅ Loki connection: status=success, 0 stream(s) matched
+[12] ✅ Tempo connection: search succeeded, 0 trace(s) matched
+[13] ✅ Prometheus connection: status=success, resultType=vector, 0 series matched
 ```
 
-Tempo and Prometheus aren't included in the live check yet — their real query paths (the portal's connection pages show paths that may be Grafana-internal datasource-proxy routes rather than the public API) haven't been confirmed. `query-tempo.ts`/`query-prometheus.ts` are stubs that explain exactly what's still unverified.
+`0 matched` on all three is expected at this point — see the last section below.
 
-## 6. Query and verify test output (Loki only, for now)
+Getting here took determining the real query paths empirically rather than trusting the portal's own connection-page labels: `tools/validation/grafana/probe-tempo-prometheus.ts` tested both a plausible-looking variant and the portal's literal displayed path for each of Tempo and Prometheus. Result: Tempo needs a `/tempo` prefix (`/tempo/api/search`, not plain `/api/search` — the opposite of what was guessed going in), and Prometheus needs Grafana Cloud's Cortex-style `/api/prom` prefix (`/api/prom/api/v1/query`, not plain `/api/v1/query` — this one matched the guess). Neither was assumed into the final scripts without that check.
+
+## 6. Query and verify test output
 
 ```bash
 npx tsx query-loki.ts <service-name> --compare-with /path/to/logs/dev.log
+npx tsx query-tempo.ts <service-name> --compare-with /path/to/logs/dev.log
+npx tsx query-prometheus.ts <service-name> --compare-with /path/to/logs/dev.log
 ```
 
-This pipes Grafana Cloud's response to the same `specification/tests/validate-loki-consistency.py` UIS's `--compare-with` already uses — exact `trace_id`/`event_id` matching against the source log file, not just "service found." No transformation needed: Grafana Cloud's hosted Loki returns the identical response shape as self-hosted Loki.
+Each pipes Grafana Cloud's response to the matching `specification/tests/validate-*-consistency.py` script UIS's `--compare-with` already uses — exact `trace_id`/`event_id` matching against the source log file, not just "service found." Loki and Prometheus need no transformation (Grafana Cloud's hosted APIs return the identical response shape as self-hosted). Tempo does: `query-tempo.ts` fetches each trace's full span detail and converts base64 span/trace IDs to hex, replicating exactly what the original `query-tempo.sh` did, to match the `spanSets[].spans[]` shape the Python validator expects.
 
-## Point an E2E test's ingestion at it — not yet done
+Not yet run with real data — see the next section.
 
-The OTLP push side (pointing a language's E2E test at `GRAFANA_CLOUD_OTLP_ENDPOINT` with Basic Auth headers built from the ingest token) hasn't been wired up yet. This is the remaining piece before there's real telemetry in this stack to verify against, rather than just proving the query path works on whatever's already there.
+## Wiring up ingestion — not yet done
+
+The OTLP push side (pointing a language's E2E test at `GRAFANA_CLOUD_OTLP_ENDPOINT` with Basic Auth headers built from the ingest token) hasn't been wired up yet. This is the one remaining piece before there's real telemetry in this stack to run `--compare-with` against, rather than just proving the query path works against an empty stack.
 
 ## Troubleshooting
 
 - **Access policy / token creation**: has to be done by a human — see step 2.
 - **Hyphens in env var names**: silently break `source` — see step 4.
-- **Tempo/Prometheus query paths unconfirmed**: see step 5 and the stub file headers in `query-tempo.ts`/`query-prometheus.ts` for the exact curl commands still needed.
+- **A query path that looks right in the portal isn't necessarily the real public API path**: see step 5 — Grafana's own connection-page labels for Tempo and Prometheus were misleading in different directions. Don't extend this tooling to a new signal or region without checking with `probe-tempo-prometheus.ts`'s pattern first.

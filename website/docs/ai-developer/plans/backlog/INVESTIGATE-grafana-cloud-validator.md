@@ -6,11 +6,11 @@ Scopes the concrete first piece of work coming out of [`INVESTIGATE-external-bac
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active — Loki verified working end-to-end against a live Grafana Cloud stack; Tempo/Prometheus blocked on confirming real query paths
+## Status: All three signals confirmed working live — remaining work is wiring up ingestion, not query/auth
 
 **Goal**: Design a TypeScript program that authenticates to Grafana Cloud and verifies sovdev-logger telemetry (from either the TypeScript or Python E2E test — see [Q3](#questions-to-answer)) actually arrived correctly: exact `trace_id`/`event_id` matching against the source log file, the same rigor as `--compare-with` in the existing bash tools, replacing bash's fragile JSON handling with TypeScript's native handling.
 
-**Last Updated**: 2026-07-09 — a real Grafana Cloud stack ("urbalurba") now exists with confirmed endpoint/Instance-ID facts (see [Current State](#current-state)); [Q1]/[Q2]/[Q4]/[Q5] decided (below); `tools/validation/grafana/` scaffolded with a working `query-loki.ts` and stubbed `query-tempo.ts`/`query-prometheus.ts` pending path verification.
+**Last Updated**: 2026-07-09 — `check-connection.ts` run by the maintainer against the live "urbalurba" stack confirms all three signals working: `[11] ✅ Loki connection`, `[12] ✅ Tempo connection`, `[13] ✅ Prometheus connection` (0 matched results on all three, expected — nothing has been pushed to this stack yet, see the last unchecked item in [Next Steps](#next-steps)). `query-tempo.ts` and `query-prometheus.ts` are now fully implemented, not stubs — the real query paths were determined empirically via `probe-tempo-prometheus.ts` rather than assumed (and the initial guess about Tempo was wrong: it needs a `/tempo` prefix, the opposite of what self-hosted Tempo needs).
 
 ---
 
@@ -44,18 +44,22 @@ Pulled directly from the Grafana Cloud portal, not assumed:
 
 - **OTLP ingestion**: one endpoint, `https://otlp-gateway-prod-eu-west-0.grafana.net/otlp`, covers logs+traces+metrics together. Basic Auth username is a distinct **OTLP Instance ID (484308)** — separate again from each signal's own query-side Instance ID below.
 - **Loki** (logs): query host `https://logs-prod-eu-west-0.grafana.net`, Instance ID `333665`. Query path confirmed matching self-hosted exactly: `/loki/api/v1/query_range`.
-- **Tempo** (traces): host `https://tempo-eu-west-0.grafana.net` (no `-prod`, no `-01` — confirmed non-uniform naming), Instance ID `330178`. **Query path NOT YET confirmed** — the portal's own datasource-config page shows a `/tempo` suffix, which may be a Grafana-internal datasource-proxy path rather than the real public Tempo search API (`/api/search`). Two curl variants are pending verification.
-- **Prometheus/Mimir** (metrics): host `https://prometheus-prod-01-eu-west-0.grafana.net`, Instance ID `669389`. **Query path NOT YET confirmed** — the portal shows an `/api/prom` prefix (the old Cortex-style convention); unclear whether the real PromQL endpoint needs it in front of `/api/v1/query` or not. Two curl variants are pending verification.
+- **Tempo** (traces): host `https://tempo-eu-west-0.grafana.net` (no `-prod`, no `-01` — confirmed non-uniform naming), Instance ID `330178`. **Query path confirmed via `probe-tempo-prometheus.ts`**: `/tempo/api/search` → HTTP 200; plain `/api/search` → HTTP 404. The portal's `/tempo` suffix turned out to be required, not a Grafana-internal-only artifact — the opposite of the initial guess.
+- **Prometheus/Mimir** (metrics): host `https://prometheus-prod-01-eu-west-0.grafana.net`, Instance ID `669389`. **Query path confirmed**: `/api/prom/api/v1/query` (the old Cortex-style prefix) → HTTP 200; plain `/api/v1/query` → HTTP 404. This one matched the initial guess.
 - **Access Policy scopes confirmed**: a Read/Write/Delete matrix per resource, named `<resource>:<action>` — `metrics:read`/`metrics:write`, `logs:read`/`logs:write`/`logs:delete`, `traces:read`/`traces:write`. A single policy can hold multiple scopes together (e.g. all three `:read` scopes) — confirmed, they don't need to be separate policies.
 - **Two access policies created** (read-only research by a second, unrestricted Claude Code instance — it explicitly declined to click "Create" itself, correctly treating policy creation and token generation as an access-control/credential action outside what it should do on the maintainer's behalf, even with explicit authorization): `sovdev-logger-ingest` (write scopes) and `sovdev-logger-verify` (read scopes), each realm-scoped to the `urbalurba` stack only, not the whole org. Actual creation and token generation were left to the maintainer.
 
 ### Implementation state
 
-`tools/validation/grafana/` now exists:
-- `lib/grafana-cloud-client.ts` — shared Basic Auth `fetch()` helper (`grafanaCloudQuery()`) + `credentialsFromEnv()`.
-- `lib/consistency-check.ts` — pipes a query result to `specification/tests/validate-*-consistency.py` via `spawnSync('python3', ...)`, confirmed the relative path from `tools/validation/grafana/lib/` resolves correctly to `specification/tests/`.
-- `query-loki.ts` — **fully implemented**, mirrors `query-loki.sh`'s flags, type-checks clean, smoke-tested (`--help` and the missing-credentials error path both work). Not yet run against the live endpoint — needs the real `GRAFANA_CLOUD_VERIFY_TOKEN`.
-- `query-tempo.ts` / `query-prometheus.ts` — **stubs only**, print a clear "not yet implemented, path unconfirmed" error and exit 1. Each documents exactly which two curl variants need to resolve the real path before implementation continues.
+`tools/validation/grafana/` now exists, all confirmed working against the live "urbalurba" stack:
+- `lib/grafana-cloud-client.ts` — shared Basic Auth `fetch()` helper (`grafanaCloudQuery()`, plus a non-throwing `probeGrafanaCloudPath()` used for path discovery) + `credentialsFromEnv()`.
+- `lib/consistency-check.ts` — pipes a query result to `specification/tests/validate-*-consistency.py` via `spawnSync('python3', ...)`, confirmed the relative path from `tools/validation/grafana/lib/` resolves correctly to `specification/tests/`. Not yet exercised with `--compare-with` against real E2E output (that needs the ingestion side wired up first).
+- `lib/env-checks.ts` + `lib/env-checks.test.ts` — pure validation logic, 12 passing unit tests with fake dummy values.
+- `check-connection.ts` — preflight tool, now tests all three signals live with numbered, detailed output (stream/trace/series counts). Confirmed: all 13 checks pass against the real stack.
+- `query-loki.ts` — **fully implemented and confirmed working live** (via `check-connection.ts`'s check #11; not yet run directly with `--compare-with` against real data, since nothing's been pushed to this stack yet).
+- `query-tempo.ts` — **fully implemented**: search + per-trace detail fetch (`/tempo/api/traces/{id}`) + the same base64→hex span-ID transformation `query-tempo.sh` did, producing the exact `spanSets[].spans[]` shape `validate-tempo-consistency.py` expects. Confirmed working live via `check-connection.ts`'s check #12.
+- `query-prometheus.ts` — **fully implemented** using the confirmed `/api/prom/api/v1/query` path. Confirmed working live via `check-connection.ts`'s check #13.
+- `probe-tempo-prometheus.ts` — the one-off diagnostic that answered the Tempo/Prometheus path question empirically instead of guessing. Its job is done; kept for reference rather than deleted.
 - `.env.example` — documents the `GRAFANA_CLOUD_*` variable convention decided in [Q5].
 
 ### Prior art
@@ -111,9 +115,11 @@ New TypeScript program does auth, fetch, JSON parsing, *and* the trace_id/event_
 - [x] Scaffolded `tools/validation/grafana/` with a working, type-checked `query-loki.ts` (Option A: TS fetch/auth, Python comparison unchanged)
 - [x] Built `check-connection.ts` — a preflight tool that validates env var sanity (URL/instance-ID/token shape) and then actually queries Loki live, rather than assuming config is correct. Its validation logic is extracted into `lib/env-checks.ts` with 12 passing unit tests (fake dummy values, no secrets).
 - [x] Maintainer created the two access policies + tokens (`sovdev-logger-ingest`, `sovdev-logger-verify`) via the portal (declined by both Claude instances involved — see [Current State](#current-state))
-- [x] **Live connection to Grafana Cloud's Loki confirmed working** — `check-connection.ts` run by the maintainer with real credentials: `✅ Loki connection: query succeeded, status=success`. This is the first real (not assumed) proof anything in this investigation actually works end-to-end.
-- [ ] Run the four remaining pending verification curls for Tempo and Prometheus (two path variants each — see the TODO comments in `query-tempo.ts`/`query-prometheus.ts`)
-- [ ] Implement `query-tempo.ts` and `query-prometheus.ts` once their real paths are confirmed
-- [ ] Run `query-loki.ts` itself (not just `check-connection.ts`) against real E2E test output with `--compare-with`, to confirm the full pipe-to-Python-validator path works live, not just the raw query
-- [ ] Write the doc page (`website/docs/contributor/testing/grafana-cloud.md`) — draft skeleton already exists with TBD sections, fill in once the above lands
+- [x] **Live connection to Grafana Cloud's Loki confirmed working** — first real (not assumed) proof anything in this investigation actually works end-to-end.
+- [x] Built `probe-tempo-prometheus.ts` and ran the four path-discovery checks — confirmed `/tempo/api/search` (Tempo) and `/api/prom/api/v1/query` (Prometheus) are the real paths, the other variant of each returns 404
+- [x] Implemented `query-tempo.ts` (search + per-trace detail + base64→hex transform) and `query-prometheus.ts` fully
+- [x] Extended `check-connection.ts` to live-test all three signals with numbered, detailed output — confirmed all 13 checks pass against the real stack
+- [x] Wrote the doc page (`website/docs/contributor/testing/grafana-cloud.md`) with the real, walked-through steps
+- [ ] Wire up the OTLP ingestion side (point an E2E test's exporter config at `GRAFANA_CLOUD_OTLP_ENDPOINT` with Basic Auth built from the ingest token) — this is the only thing left before there's real telemetry in this stack to run `--compare-with` against, rather than just proving the query path works on an empty stack
+- [ ] Once ingestion is wired up, run `query-loki.ts`/`query-tempo.ts`/`query-prometheus.ts` with `--compare-with` against real E2E test output, to confirm the full pipe-to-Python-validator path works live end-to-end, not just the raw query
 - [ ] Update `website/docs/contributor/testing/index.md`'s "Planned pages" list once this ships

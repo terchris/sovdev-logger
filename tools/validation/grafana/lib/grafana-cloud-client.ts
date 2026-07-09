@@ -39,6 +39,41 @@ export async function grafanaCloudQuery(
   return JSON.parse(text);
 }
 
+export interface ProbeResult {
+  status: number;
+  ok: boolean;
+  bodySnippet: string;
+}
+
+/**
+ * Like grafanaCloudQuery(), but never throws on non-2xx — used for
+ * discovering which of several candidate paths is actually correct, where a
+ * 404 is useful data, not a failure. Never returns the credentials used.
+ */
+export async function probeGrafanaCloudPath(
+  baseUrl: string,
+  path: string,
+  params: Record<string, string>,
+  creds: GrafanaCloudCredentials,
+): Promise<ProbeResult> {
+  const url = new URL(path, baseUrl);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+
+  const auth = Buffer.from(`${creds.instanceId}:${creds.token}`).toString('base64');
+  const response = await fetch(url, {
+    headers: { Authorization: `Basic ${auth}` },
+  });
+  const text = await response.text();
+
+  return {
+    status: response.status,
+    ok: response.ok,
+    bodySnippet: text.slice(0, 300),
+  };
+}
+
 export function credentialsFromEnv(instanceIdVar: string, tokenVar: string): GrafanaCloudCredentials {
   const instanceId = process.env[instanceIdVar];
   const token = process.env[tokenVar];
