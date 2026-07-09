@@ -30,7 +30,7 @@ tool, not a roadmap.
 
 ## Tier 1 — next up
 
-- [`PLAN-fix-otlp-headers-spec-compliance.md`](PLAN-fix-otlp-headers-spec-compliance.md) (from [`INVESTIGATE-otlp-headers-standard-compliance.md`](INVESTIGATE-otlp-headers-standard-compliance.md)) — fix a real bug: sovdev-logger's own contract mandates a JSON format for `OTEL_EXPORTER_OTLP_HEADERS` that deviates from the actual OpenTelemetry spec, and actively collides with the OTel SDK's native env-var parsing (confirmed by reading the actual installed SDK source) — silently drops telemetry for any header value containing `=` (e.g. any Basic Auth token). Affects both languages, already published to npm as `1.0.0`. Root cause and fix fully diagnosed; blocks `INVESTIGATE-grafana-cloud-validator.md` from completing.
+- `PLAN-fix-otlp-headers-spec-compliance.md` (separate branch, `fix/otlp-headers-spec-compliance`) — fix a real bug: sovdev-logger's own contract mandated a JSON format for `OTEL_EXPORTER_OTLP_HEADERS` that deviated from the actual OpenTelemetry spec and collided with the OTel SDK's native env-var parsing. **Phase 1 (TypeScript) done and verified live against Grafana Cloud** — Phase 2 (Python port) and Phase 3 (version bump/republish) remain. No longer blocks `INVESTIGATE-grafana-cloud-validator.md`, which is now fully complete.
 
 ## Tier 2 — real, not urgent
 
