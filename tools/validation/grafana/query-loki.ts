@@ -119,6 +119,18 @@ async function main(): Promise<void> {
   }
   const creds = credentialsFromEnv('GRAFANA_CLOUD_LOKI_INSTANCE_ID', 'GRAFANA_CLOUD_VERIFY_TOKEN');
 
+  // Auto-bump the limit for --compare-with, matching query-loki.sh's
+  // behavior — otherwise the default limit (10) silently truncates results
+  // below the file's actual entry count, reporting false "missing" entries.
+  if (opts.compareWith) {
+    const { readFileSync } = await import('node:fs');
+    const fileEntryCount = readFileSync(opts.compareWith, 'utf-8').split('\n').filter(Boolean).length;
+    const autoLimit = fileEntryCount + 10;
+    if (autoLimit > opts.limit) {
+      opts.limit = autoLimit;
+    }
+  }
+
   const { startNs, endNs } = parseTimeRangeToNanos(opts.timeRange);
   const logqlQuery = `{service_name="${opts.serviceName}"}`;
 
