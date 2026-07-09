@@ -87,9 +87,25 @@ Each pipes Grafana Cloud's response to the matching `specification/tests/validat
 
 Not yet run with real data — see the next section.
 
-## Wiring up ingestion — not yet done
+## 7. Wire up ingestion for an E2E test (without touching your UIS config)
 
-The OTLP push side (pointing a language's E2E test at `GRAFANA_CLOUD_OTLP_ENDPOINT` with Basic Auth headers built from the ingest token) hasn't been wired up yet. This is the one remaining piece before there's real telemetry in this stack to run `--compare-with` against, rather than just proving the query path works against an empty stack.
+```bash
+cd /path/to/sovdev-logger
+set -a && source tools/validation/grafana/.env && set +a
+npx tsx tools/validation/grafana/generate-e2e-env.ts \
+  typescript/test/e2e/company-lookup/.env.grafana-cloud \
+  sovdev-test-company-lookup-typescript-grafana-cloud
+```
+
+This writes a **sibling** `.env.grafana-cloud`, never touching the existing `.env` (which stays pointed at local UIS). `run-test.sh` accepts `--env-file` so you can pick which backend's config to load per run:
+
+```bash
+cd typescript/test/e2e/company-lookup
+bash run-test.sh --skip-validation --env-file .env.grafana-cloud   # Grafana Cloud
+bash run-test.sh --skip-validation                                  # local UIS, unchanged
+```
+
+Then verify with the query tools from step 6, using `--compare-with logs/dev.log` against the log file that run just produced.
 
 ## Troubleshooting
 

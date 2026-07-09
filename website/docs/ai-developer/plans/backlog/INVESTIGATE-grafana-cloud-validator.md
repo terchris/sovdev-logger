@@ -6,7 +6,7 @@ Scopes the concrete first piece of work coming out of [`INVESTIGATE-external-bac
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: All three signals confirmed working live — remaining work is wiring up ingestion, not query/auth
+## Status: Blocked on a real library bug found while wiring up ingestion — see [`INVESTIGATE-otlp-headers-standard-compliance.md`](INVESTIGATE-otlp-headers-standard-compliance.md)
 
 **Goal**: Design a TypeScript program that authenticates to Grafana Cloud and verifies sovdev-logger telemetry (from either the TypeScript or Python E2E test — see [Q3](#questions-to-answer)) actually arrived correctly: exact `trace_id`/`event_id` matching against the source log file, the same rigor as `--compare-with` in the existing bash tools, replacing bash's fragile JSON handling with TypeScript's native handling.
 
@@ -120,6 +120,6 @@ New TypeScript program does auth, fetch, JSON parsing, *and* the trace_id/event_
 - [x] Implemented `query-tempo.ts` (search + per-trace detail + base64→hex transform) and `query-prometheus.ts` fully
 - [x] Extended `check-connection.ts` to live-test all three signals with numbered, detailed output — confirmed all 13 checks pass against the real stack
 - [x] Wrote the doc page (`website/docs/contributor/testing/grafana-cloud.md`) with the real, walked-through steps
-- [ ] Wire up the OTLP ingestion side (point an E2E test's exporter config at `GRAFANA_CLOUD_OTLP_ENDPOINT` with Basic Auth built from the ingest token) — this is the only thing left before there's real telemetry in this stack to run `--compare-with` against, rather than just proving the query path works on an empty stack
-- [ ] Once ingestion is wired up, run `query-loki.ts`/`query-tempo.ts`/`query-prometheus.ts` with `--compare-with` against real E2E test output, to confirm the full pipe-to-Python-validator path works live end-to-end, not just the raw query
+- [x] Wired up the OTLP ingestion side (`generate-e2e-env.ts`, `run-test.sh --env-file`) — and in doing so, **found a real bug**: sovdev-logger's own `OTEL_EXPORTER_OTLP_HEADERS` handling deviates from the actual OpenTelemetry spec and collides with the SDK's native env-var parsing whenever a header value contains `=` (any Basic Auth token). Traces flush crashed with `ERR_INVALID_HTTP_TOKEN`. Full diagnosis and fix plan spun out into [`INVESTIGATE-otlp-headers-standard-compliance.md`](INVESTIGATE-otlp-headers-standard-compliance.md) — **this investigation is now blocked on that fix landing** before ingestion can actually succeed.
+- [ ] Once the header-format fix lands, re-run ingestion and then `query-loki.ts`/`query-tempo.ts`/`query-prometheus.ts` with `--compare-with` against real E2E test output, to confirm the full pipe-to-Python-validator path works live end-to-end, not just the raw query
 - [ ] Update `website/docs/contributor/testing/index.md`'s "Planned pages" list once this ships

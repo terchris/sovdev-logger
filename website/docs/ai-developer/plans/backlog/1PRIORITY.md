@@ -24,13 +24,13 @@ tool, not a roadmap.
   it; one completes → strike it and promote dependents; a child PLAN ships
   → re-rank the parent. Full re-rank quarterly or after every 3 ships.
 
-**Last triaged:** 2026-07-09 — `INVESTIGATE-grafana-cloud-validator.md`: all three signals (Loki/Tempo/Prometheus) now confirmed working live against a real stack. Only remaining gap is wiring up OTLP ingestion, so it stays in Tier 3 rather than moving to done.
+**Last triaged:** 2026-07-09 — wiring up Grafana Cloud ingestion surfaced a real bug in sovdev-logger itself (`OTEL_EXPORTER_OTLP_HEADERS` deviates from the OTel spec, collides with the SDK's native parsing, silently drops telemetry for any Basic-Auth-style header). New `INVESTIGATE-otlp-headers-standard-compliance.md` added to Tier 1 — it now blocks `INVESTIGATE-grafana-cloud-validator.md`, which drops to Tier 3.
 
 ---
 
 ## Tier 1 — next up
 
-_(none yet — both investigations' active work is done; see Tier 5 for the one remaining open item)_
+- [`PLAN-fix-otlp-headers-spec-compliance.md`](PLAN-fix-otlp-headers-spec-compliance.md) (from [`INVESTIGATE-otlp-headers-standard-compliance.md`](INVESTIGATE-otlp-headers-standard-compliance.md)) — fix a real bug: sovdev-logger's own contract mandates a JSON format for `OTEL_EXPORTER_OTLP_HEADERS` that deviates from the actual OpenTelemetry spec, and actively collides with the OTel SDK's native env-var parsing (confirmed by reading the actual installed SDK source) — silently drops telemetry for any header value containing `=` (e.g. any Basic Auth token). Affects both languages, already published to npm as `1.0.0`. Root cause and fix fully diagnosed; blocks `INVESTIGATE-grafana-cloud-validator.md` from completing.
 
 ## Tier 2 — real, not urgent
 
@@ -38,7 +38,7 @@ _(none yet)_
 
 ## Tier 3 — blocked
 
-- [`INVESTIGATE-grafana-cloud-validator.md`](INVESTIGATE-grafana-cloud-validator.md) — building the TypeScript verification program for Grafana Cloud. All three query/auth scripts (`query-loki.ts`/`query-tempo.ts`/`query-prometheus.ts`) implemented and confirmed working live via `check-connection.ts` (13/13 checks pass). Blocked only on wiring up OTLP ingestion so there's real telemetry to run `--compare-with` against.
+- [`INVESTIGATE-grafana-cloud-validator.md`](INVESTIGATE-grafana-cloud-validator.md) — building the TypeScript verification program for Grafana Cloud. All three query/auth scripts (`query-loki.ts`/`query-tempo.ts`/`query-prometheus.ts`) implemented and confirmed working live via `check-connection.ts` (13/13 checks pass). Blocked on `INVESTIGATE-otlp-headers-standard-compliance.md` landing — ingestion crashes on flush until that bug is fixed.
 
 ## Tier 4 — investigated, undecided
 
