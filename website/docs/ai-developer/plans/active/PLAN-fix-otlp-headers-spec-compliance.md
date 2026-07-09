@@ -74,12 +74,14 @@ Already published: `@terchris/sovdev-logger@1.0.0` is live on npm with this bug 
 
 ---
 
-## Phase 3: Version bump and republish
+## Phase 3: Version bump and republish — IN PROGRESS
+
+Python has no published package (no PyPI, no `[project]` version in `pyproject.toml`) — this phase is TypeScript-only, matching its original scope.
 
 ### Tasks
 
-- [ ] 3.1 Maintainer decides the version number (recommend `1.0.1` — patch, no public API surface change, per [INVESTIGATE-otlp-headers-standard-compliance.md](../backlog/INVESTIGATE-otlp-headers-standard-compliance.md)'s [Q3])
-- [ ] 3.2 Bump `typescript/package.json` version
+- [x] 3.1 Version: `1.0.1` — patch, no public API surface change, per [INVESTIGATE-otlp-headers-standard-compliance.md](../backlog/INVESTIGATE-otlp-headers-standard-compliance.md)'s [Q3]
+- [x] 3.2 Bumped `typescript/package.json` (and regenerated `package-lock.json` via `npm install --package-lock-only` to keep it in sync) to `1.0.1`; `npx tsc --noEmit` clean
 - [ ] 3.3 `npm publish` (maintainer runs this themselves — requires a live npm OTP, same as the original publish)
 
 ### Validation
