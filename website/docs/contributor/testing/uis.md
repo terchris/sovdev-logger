@@ -103,13 +103,15 @@ Python's E2E test (`python/test/e2e/company-lookup/`) uses the exact same UIS en
 dct-exec bash -c "cd /workspace/python/test/e2e/company-lookup && bash run-test.sh"
 ```
 
-**The single-quoting requirement from step 4 does not apply here.** TypeScript's `run-test.sh` loads `.env` with bash's `source`, which needs the quotes to protect the JSON in `OTEL_EXPORTER_OTLP_HEADERS` from word-splitting. Python's test loads `.env` with `python-dotenv`'s `load_dotenv()` (in `company-lookup.py`), which doesn't do shell-style parsing — the unquoted value works as-is:
+`OTEL_EXPORTER_OTLP_HEADERS` uses the same real OTel spec format as TypeScript (comma-separated `key=value`, no quoting needed here regardless):
 
 ```bash
-OTEL_EXPORTER_OTLP_HEADERS={"Host":"otel.localhost"}
+OTEL_EXPORTER_OTLP_HEADERS=Host=otel.localhost
 ```
 
-Confirmed empirically, not assumed: this exact unquoted value was tested first (before trying a quoted one), and it worked on the first run — 17 log entries, correct 3-success/1-failure pattern, `TracerProvider` initialized correctly. Verified the data landed the same way as TypeScript, using `--compare-with` for the same exact trace_id/event_id cross-check (not just "service found"):
+**Quoting is never load-bearing for Python either way** — TypeScript's `run-test.sh` loads `.env` with bash's `source`, which word-splits unquoted values containing a space or embedded quote character. Python's test loads `.env` with `python-dotenv`'s `load_dotenv()` (in `company-lookup.py`), which doesn't do shell-style parsing — so even a value containing a space (e.g. a Basic Auth token) works unquoted here.
+
+Confirmed empirically, not assumed: re-ran the test after porting Python's header handling to stop `json.loads`-parsing this env var itself (letting the OTel SDK's own `parse_env_headers()` read it natively, matching the real spec) — clean run, 17 log entries, correct 3-success/1-failure pattern, `TracerProvider` initialized correctly. Verified the data landed the same way as TypeScript, using `--compare-with` for the same exact trace_id/event_id cross-check (not just "service found"):
 
 ```bash
 dct-exec bash -c "cd /workspace/specification/tools && ./query-loki.sh sovdev-test-company-lookup-python --compare-with /workspace/python/test/e2e/company-lookup/logs/dev.log"
