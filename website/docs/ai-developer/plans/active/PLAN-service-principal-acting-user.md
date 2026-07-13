@@ -58,17 +58,17 @@ All three fields present via the real OTLP export path on both backends — conf
 
 ---
 
-## Phase 2: Grafana Cloud privacy warning
+## Phase 2: Grafana Cloud privacy warning — DONE
 
 ### Tasks
 
-- [ ] 2.1 At `sovdev_initialize()`, check `process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` for a `grafana.net` substring; cache the result in a module-level flag (e.g. `isGrafanaCloudBackend`).
-- [ ] 2.2 In `sovdev_set_context()` (or `write_log()`, wherever it's cleanest to check without adding per-call overhead), if `acting_user` is present in the context and `isGrafanaCloudBackend` is true, print a one-time warning (module-level "already warned" flag, not per-call) via `console.warn()`, matching the library's existing diagnostic-warning style.
-- [ ] 2.3 Confirm the exact wording is clear and specific — states what's happening (this value is going to Grafana Cloud) and why it matters (may contain personal data), not vague.
+- [x] 2.1 At `sovdev_initialize()`, check `process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT` for a `grafana.net` substring; cache the result in a module-level flag (`isGrafanaCloudBackend`).
+- [x] 2.2 In `sovdev_set_context()`, if `acting_user` is present in the passed-in context and `isGrafanaCloudBackend` is true, print a one-time warning (module-level `hasWarnedAboutActingUser` flag, reset on each `sovdev_initialize()` call) via `console.warn()`, matching the library's existing diagnostic-warning style. Checked in `sovdev_set_context()` rather than `write_log()` — the warning is about the act of setting a potentially-sensitive value, not about each individual log line, and it avoids adding a per-log-call check.
+- [x] 2.3 Wording states what's happening (acting_user is set and logs are exported to Grafana Cloud, a third-party service) and why it matters (may contain personal data), plus a concrete recommendation (use a pseudonymous/internal identifier instead).
 
 ### Validation
 
-Real test against Grafana Cloud: set `acting_user`, confirm the warning fires exactly once even across multiple `sovdev_log()` calls in the same process. Real test against UIS: confirm the warning does *not* fire (self-hosted, not the risk case).
+Real test against Grafana Cloud (throwaway script, two `sovdev_set_context({ acting_user })` calls plus one `sovdev_set_context({ client_name })`-only call, in the same process): warning printed exactly once, on the first `acting_user` call only — not on the second `acting_user` call, and not on the `client_name`-only call. Real test against UIS with the identical script: no warning printed at all.
 
 ---
 

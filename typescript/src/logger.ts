@@ -89,6 +89,16 @@ interface SovdevRequestContext {
  */
 const requestContextStorage = new AsyncLocalStorage<SovdevRequestContext>();
 
+// Set once at sovdev_initialize() time (not re-checked per call) -- whether
+// the configured OTLP logs endpoint looks like Grafana Cloud, the one
+// backend where acting_user (possible personal data) leaves org
+// infrastructure to a third party. Drives the one-time privacy warning
+// below; UIS/self-hosted backends never trigger it.
+let isGrafanaCloudBackend = false;
+// Ensures the acting_user privacy warning prints once per process, not once
+// per sovdev_log() call.
+let hasWarnedAboutActingUser = false;
+
 // =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
@@ -1441,6 +1451,11 @@ function initialize_sovdev_logger(
     effective_system_ids
   );
 
+  isGrafanaCloudBackend = (process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT || '').includes(
+    'grafana.net'
+  );
+  hasWarnedAboutActingUser = false;
+
   const is_development = process.env.NODE_ENV !== 'production';
   const has_otlp_endpoint = !!process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT;
   const log_to_console =
@@ -1759,6 +1774,20 @@ export function sovdev_set_context(context: SovdevRequestContext): void {
   // replace it outright, so an earlier call's fields survive a later one.
   const existing = requestContextStorage.getStore();
   requestContextStorage.enterWith({ ...existing, ...context });
+
+  // acting_user may carry personal data (e.g. a raw JWT claim). Warn once
+  // per process -- not per call -- when it's headed to Grafana Cloud, a
+  // third-party service, so it never fires against a self-hosted backend
+  // like UIS. Never block or strip the value; the library has zero opinion
+  // on what it contains.
+  if (context.acting_user && isGrafanaCloudBackend && !hasWarnedAboutActingUser) {
+    hasWarnedAboutActingUser = true;
+    console.warn(
+      '⚠️  sovdev_set_context(): acting_user is set and logs are exported to Grafana Cloud ' +
+        '(a third-party service). If acting_user may contain personal data (e.g. a raw JWT ' +
+        'claim), consider using a pseudonymous or internal identifier instead.'
+    );
+  }
 }
 
 // Export types for TypeScript consumers
