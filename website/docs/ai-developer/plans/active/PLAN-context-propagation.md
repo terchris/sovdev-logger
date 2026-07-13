@@ -78,18 +78,32 @@ User reviews the new/changed README sections read clearly and the query syntax i
 
 ---
 
-## Phase 3: End-to-end validation against real backends
+## Phase 3: End-to-end validation against real backends — DONE
 
 ### Tasks
 
-- [ ] 3.1 Add a `sovdev_set_context()` call to the E2E example (`typescript/test/e2e/company-lookup/company-lookup.ts`) — reuses existing, proven E2E infrastructure rather than building new validation tooling, and doubles as a real usage example (the issue itself called this file "a genuinely good teaching artifact").
-- [ ] 3.2 Run the E2E test against real Grafana Cloud; confirm via a direct Loki query (same method used in the investigation's Q8 testing) that `client_name` is present and queryable via the structured-metadata filter syntax, not a label.
-- [ ] 3.3 Run the same E2E test against real UIS; confirm identically.
-- [ ] 3.4 Confirm the existing E2E schema-validation step (17 log entries validated against `log-entry-schema.json`) still passes with `client_name` present on some entries and absent on others — proves the schema's optional-field handling is correct, not just additive in theory.
+- [x] 3.1 Added `sovdev_set_context({ client_name: 'company-lookup-e2e-client' })` to `company-lookup.ts`, called once right after `sovdev_initialize()` so every one of the 17 generated log entries demonstrates it. Also added `client_name` to `compare-log-files.py`'s `EXCLUDED_FIELDS` (found during implementation, not originally scoped) — this E2E file is the cross-language conformance reference compared against Python's output, and `client_name` is TypeScript-only for now; without excluding it, the comparison would report every entry as a mismatch since Python has no such field yet.
+- [x] 3.2 Ran the E2E test against real Grafana Cloud. **Found and fixed a real bug in the process**: `client_name` reached the local file log correctly but never arrived in Grafana Cloud at all, even after 30+ minutes — not an ingestion delay. Root cause: the OTLP export path is a separate custom Winston transport (`open_telemetry_winston_transport` in `logger.ts`) with its own **hardcoded attribute list**, unrelated to the `structured_log_entry` object Phase 1 correctly updated — `client_name` was never added to this second, separate list, so it was silently dropped before ever reaching OTLP. Confirmed via a minimal diagnostic script (found present in file log, absent from Grafana Cloud even after waiting) before finding the actual missing code. Fixed by adding `client_name` to the transport's attribute-building logic, alongside the existing `trace_id`/`span_id`/`event_id` conditional pattern. Re-verified after the fix — real query output:
+  ```
+  {service_name="sovdev-test-company-lookup-typescript-grafana-cloud"} | client_name="company-lookup-e2e-client"
+  → matches: 17, stats.queryReferencedStructuredMetadata: true
+
+  {service_name=~".+"} | client_name="company-lookup-e2e-client"   (fleet-wide)
+  → matches: 17
+  ```
+- [x] 3.3 Ran the same E2E test against real UIS (via `dct-exec`, inside the devcontainer). Identical result:
+  ```
+  {service_name="sovdev-test-company-lookup-typescript"} | client_name="company-lookup-e2e-client"
+  → matches: 17
+
+  {service_name=~".+"} | client_name="company-lookup-e2e-client"   (fleet-wide)
+  → matches: 17
+  ```
+- [x] 3.4 Confirmed the existing E2E schema-validation step still passes: `✅ All 17 log entries match schema` / `✅ All 2 log entries match schema` (dev.log/error.log), on both backends. All 17 entries have `client_name` present in this particular demo (set once at the top of `main()`, covering the whole run) rather than "some present, some absent" as originally worded — the absent-when-not-set case was already conclusively verified in Phase 1's dedicated throwaway test (`has_client_name=False` when `sovdev_set_context()` is never called), so this phase focused on confirming the *present* case survives a real backend round trip, which Phase 1 alone couldn't test.
 
 ### Validation
 
-Real query output pasted into the plan (or linked), same standard as every other backend-facing change this session — a claim of "it works" isn't enough without the actual query result shown.
+Real query output shown above for both backends, not just "it works" — confirms `queryReferencedStructuredMetadata` is genuinely being used (the real structured-metadata path, not a body regex scan), and that fleet-wide search (the actual ollacrm goal) returns the same 17/17 matches without needing to know the service name in advance.
 
 ---
 

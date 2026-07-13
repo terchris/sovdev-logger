@@ -50,6 +50,10 @@ _(none yet)_
 
 - Decide whether Go/C#/Rust/PHP restart from scratch or from their archived `terchris/implementation-tests/` state — the one remaining open item from [`INVESTIGATE-multi-language-conformance.md`](../completed/INVESTIGATE-multi-language-conformance.md) (resolved and moved to `completed/`, all four child plans merged); no INVESTIGATE written for this yet, no urgency signal from the maintainer.
 
+## Notes (not triage, just don't want to lose it)
+
+- **Slogan idea, in progress**: something along the lines of *logging for hundreds of frontends and thousands of APIs* — echoes the actual driving use case behind `INVESTIGATE-context-propagation.md` (ollacrm: "gather logs from hundreds of APIs and many clients... filter out one client... across many APIs"). Not decided/finalized, just parking it here.
+
 ## Retire candidates
 
 _(none yet)_

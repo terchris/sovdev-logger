@@ -201,6 +201,12 @@ class open_telemetry_winston_transport extends TransportStream {
         timestamp: info.timestamp,
       };
 
+      // Add client_name if set via sovdev_set_context() -- optional, only
+      // present for services that serve multiple registered callers
+      if (info.client_name) {
+        attributes.client_name = info.client_name;
+      }
+
       // Add correlation fields (snake_case for consistency)
       if (info.trace_id) {
         attributes.trace_id = info.trace_id;
