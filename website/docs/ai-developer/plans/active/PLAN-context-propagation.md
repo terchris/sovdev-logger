@@ -1,18 +1,18 @@
 # Plan: Request-scoped context propagation (`client_name`) for the TypeScript package
 
-Adds `sovdev_set_context({ client_name })` to `@terchris/sovdev-logger`, so a service that handles requests from multiple registered callers (ollacrm's driving case) can stamp `client_name` once per request and have every `sovdev_log()` call in that request inherit it automatically — resolved end-to-end in [`INVESTIGATE-context-propagation.md`](INVESTIGATE-context-propagation.md).
+Adds `sovdev_set_context({ client_name })` to `@terchris/sovdev-logger`, so a service that handles requests from multiple registered callers (ollacrm's driving case) can stamp `client_name` once per request and have every `sovdev_log()` call in that request inherit it automatically — resolved end-to-end in [`INVESTIGATE-context-propagation.md`](../backlog/INVESTIGATE-context-propagation.md).
 
 > **IMPLEMENTATION RULES:** Before implementing this plan, read and follow:
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Active
 
 **Goal**: Ship `sovdev_set_context()` in the TypeScript package, remove the dead `sovdev_generate_trace_id` documentation, update the Grafana dashboard to surface the new field, and validate `client_name` end-to-end against real Grafana Cloud and UIS.
 
 **Last Updated**: 2026-07-13
 
-**Investigation**: [INVESTIGATE-context-propagation.md](INVESTIGATE-context-propagation.md) — all 12 decision points resolved. This plan implements those decisions; it does not re-open them.
+**Investigation**: [INVESTIGATE-context-propagation.md](../backlog/INVESTIGATE-context-propagation.md) — all 12 decision points resolved. This plan implements those decisions; it does not re-open them.
 
 **Scope**: TypeScript only. Python (and any future language) is deliberately out of scope for this plan — see the investigation's cross-language discussion. `client_name` is already locked into the shared schema (`tools/validation/schemas/log-entry-schema.json`), so a future Python plan inherits the same field name for free via the existing codegen; it does not need to re-decide naming.
 
