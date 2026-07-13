@@ -54,6 +54,11 @@ _(none yet)_
 
 - **Slogan idea, in progress**: something along the lines of *logging for hundreds of frontends and thousands of APIs* — echoes the actual driving use case behind `INVESTIGATE-context-propagation.md` (ollacrm: "gather logs from hundreds of APIs and many clients... filter out one client... across many APIs"). Not decided/finalized, just parking it here.
 
+- **Two-customer framing, in progress**: sovdev-logger has two distinct customers, and both must be happy at once, not traded off against each other.
+  - **The developer** — just wants to log from her application. Wants this simple: one `sovdev_log()` call, zero-effort metrics/traces, nothing extra to think about unless she needs it.
+  - **The operator** — manages *all* the logs, across *all* the applications, and by extension needs visibility into all the developers/teams producing them. Wants the fleet-wide view: which API, which client, how many are actually logging, where the errors are.
+  - This isn't just a slogan angle — it's already a real design principle behind decisions made in `PLAN-context-propagation.md`: `client_name` is entirely optional/additive (Q9) *specifically* so the developer who doesn't care about fleet management never has to touch it, while the operator gets fleet-wide filtering once a service opts in. The still-open "operator dashboard panel" idea (Tier 5 above) is the operator-side half of this same framing — a developer-facing feature (`client_name`) that only pays off once there's an operator-facing view built on top of it.
+
 ## Retire candidates
 
 _(none yet)_
