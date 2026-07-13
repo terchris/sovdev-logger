@@ -12,7 +12,7 @@ Extends `sovdev_set_context()` with two more request-scoped fields — `service_
 
 **Last Updated**: 2026-07-13
 
-**Investigation**: [INVESTIGATE-service-principal-acting-user.md](INVESTIGATE-service-principal-acting-user.md) — all questions resolved. The merge-vs-replace correctness fix it also surfaced already shipped separately as [`PLAN-context-merge-semantics.md`](../completed/PLAN-context-merge-semantics.md); this plan only adds the two new fields and the warning.
+**Investigation**: [INVESTIGATE-service-principal-acting-user.md](../backlog/INVESTIGATE-service-principal-acting-user.md) — all questions resolved. The merge-vs-replace correctness fix it also surfaced already shipped separately as [`PLAN-context-merge-semantics.md`](../completed/PLAN-context-merge-semantics.md); this plan only adds the two new fields and the warning.
 
 **Decisions confirmed just before drafting this plan**:
 - Field name: `acting_user` (not `acting_user_id`).
