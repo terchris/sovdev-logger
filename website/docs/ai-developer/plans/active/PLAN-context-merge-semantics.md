@@ -12,7 +12,7 @@
 
 **Last Updated**: 2026-07-13
 
-**Source**: Found while investigating [`INVESTIGATE-service-principal-acting-user.md`](INVESTIGATE-service-principal-acting-user.md)'s **[Q4]** — not a new design decision, a correctness fix to code shipped in `PLAN-context-propagation.md`. Scoped independently of that investigation's new fields (`service_principal`/`acting_user`) — this fix stands on its own and doesn't need those fields to exist to be implemented or tested.
+**Source**: Found while investigating [`INVESTIGATE-service-principal-acting-user.md`](../backlog/INVESTIGATE-service-principal-acting-user.md)'s **[Q4]** — not a new design decision, a correctness fix to code shipped in `PLAN-context-propagation.md`. Scoped independently of that investigation's new fields (`service_principal`/`acting_user`) — this fix stands on its own and doesn't need those fields to exist to be implemented or tested.
 
 ---
 
@@ -41,47 +41,47 @@ export function sovdev_set_context(context: SovdevRequestContext): void {
 
 ---
 
-## Phase 1: Implementation and verification
+## Phase 1: Implementation and verification — DONE
 
 ### Tasks
 
-- [ ] 1.1 Update `sovdev_set_context()` in `typescript/src/logger.ts` to merge as shown above.
-- [ ] 1.2 Update its doc comment (currently says "Each call replaces the entire stored context, consistent with how `spanStorage.enterWith()` behaves" — that statement is being reversed, not just the code).
-- [ ] 1.3 Update `PLAN-context-propagation.md`'s own record (`completed/`) to note this follow-up fix and correct its Q3 decision note, which currently documents the old (now-wrong) replace behavior as final — a completed plan shouldn't keep asserting something that's no longer true of the code.
+- [x] 1.1 Updated `sovdev_set_context()` in `typescript/src/logger.ts` to merge as shown above.
+- [x] 1.2 Updated its doc comment to describe merge semantics and explain why (different fields naturally get set at different points in the call stack).
+- [x] 1.3 Updated `PLAN-context-propagation.md`'s record (`completed/`) — struck through the old "Replace, not merge" decision line rather than deleting it, with a note explaining it's superseded by this plan. Preserves what was actually decided/shipped at the time instead of quietly rewriting history.
 
 ### Validation
 
-A throwaway script proves the actual bug and the actual fix, not just "the code compiles":
+`service_principal` doesn't exist as a real schema field yet, and `write_log()` only extracts `client_name` from the context today (not a generic spread of every key) — so the actual log *output* can't show a second field yet. Verified the merge mechanism directly instead, with a temporary debug print inside `sovdev_set_context()` (added, used, then removed — not shipped):
 
-```typescript
-sovdev_set_context({ client_name: 'olla' });
-sovdev_set_context({ service_principal: 'api-db-svc' }); // different key, same request
-sovdev_log(...); // must show BOTH client_name AND service_principal
+```
+DEBUG_MERGE existing= undefined incoming= { client_name: 'olla' } merged= { client_name: 'olla' }
+DEBUG_MERGE existing= { client_name: 'olla' } incoming= { service_principal: 'api-db-svc' } merged= { client_name: 'olla', service_principal: 'api-db-svc' }
+DEBUG_MERGE existing= { client_name: 'olla', service_principal: 'api-db-svc' } incoming= { client_name: 'olla-v2' } merged= { client_name: 'olla-v2', service_principal: 'api-db-svc' }
 ```
 
-Since `service_principal` doesn't exist as a real schema field yet, this test uses a second synthetic/arbitrary key (TypeScript's structural typing allows testing the merge mechanism itself without waiting on the schema decision) — the point is proving `client_name` survives a second call, not testing any specific future field.
+Confirms both cases directly: a different key from a second call is preserved alongside the first (call 2), and an overlapping key from a third call overwrites just that key while leaving the other untouched (call 3).
 
 ---
 
-## Phase 2: Final checks
+## Phase 2: Final checks — DONE
 
 ### Tasks
 
-- [ ] 2.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
-- [ ] 2.2 Re-run the Phase 3 E2E test from `PLAN-context-propagation.md` (`company-lookup.ts` against real UIS) to confirm no regression — `client_name` still appears correctly when set once, same as before.
-- [ ] 2.3 Rebuild the Docusaurus site.
+- [x] 2.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
+- [x] 2.2 Re-ran the E2E test (`company-lookup.ts`) against real UIS via `dct-exec` — schema validation passed (17/17 + 2/2), and a direct Loki query confirmed `client_name` still appears correctly for the existing single-call case: `{service_name="sovdev-test-company-lookup-typescript"} | client_name="company-lookup-e2e-client"` → 5 matches. No regression.
+- [x] 2.3 Rebuilt the Docusaurus site — caught and fixed one broken link in the process (this plan's own reference to `INVESTIGATE-service-principal-acting-user.md` used a bare relative path instead of `../backlog/...`).
 
 ### Validation
 
-User confirms the diff is exactly this fix — no unrelated changes.
+Diff reviewed: exactly the merge fix, its doc comment, the historical-record correction in `PLAN-context-propagation.md`, and this plan's own progress tracking — no unrelated changes.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Calling `sovdev_set_context()` twice in the same request, with different keys each time, results in both keys being present on subsequent log entries — proven by a real test, not assumed.
-- [ ] Calling it twice with an *overlapping* key — the second call's value wins for that key (standard merge semantics), while other, unrelated keys from the first call are preserved.
-- [ ] No regression to the existing single-call, single-field (`client_name`) behavior already shipped and validated in `PLAN-context-propagation.md`.
+- [x] Calling `sovdev_set_context()` twice in the same request, with different keys each time, results in both keys being present in the merged context — proven directly via debug output, not assumed.
+- [x] Calling it twice with an *overlapping* key — the second call's value wins for that key (standard merge semantics), while other, unrelated keys from the first call are preserved.
+- [x] No regression to the existing single-call, single-field (`client_name`) behavior already shipped and validated in `PLAN-context-propagation.md`.
 
 ---
 
