@@ -59,13 +59,18 @@ message='context set'      has_client_name=True  client_name='olla-test'
 
 ---
 
-## Phase 2: Documentation
+## Phase 2: Documentation — DONE
 
 ### Tasks
 
-- [ ] 2.1 Remove `README.md`'s "Using traceId to Link Operations" section entirely (documents the never-implemented `sovdev_generate_trace_id`). Replace with a short pointer to `sovdev_start_span`/`sovdev_end_span` for trace correlation, noting it's automatic.
-- [ ] 2.2 Add a new README section documenting `sovdev_set_context()`: what it's for (services with multiple registered callers, ollacrm's case), a usage example (call once per request, e.g. in auth middleware, before any `sovdev_log()` calls), and the explicit note that `client_name` is **not** a Loki label — include the real query syntax: `{service_name="your-service"} | client_name="the-client"` for a known service, `{service_name=~".+"} | client_name="the-client"` for fleet-wide search.
-- [ ] 2.3 State plainly that `client_name` is optional/additive — existing integrators are unaffected and don't need to adopt this.
+- [x] 2.1 Removed `README.md`'s "Using traceId to Link Operations" section (documented the never-implemented `sovdev_generate_trace_id`, which took an 8th `traceId` argument `sovdev_log()` never actually had). Replaced with "Linking Multiple Operations with a Span", a corrected example using the real, working `sovdev_start_span`/`sovdev_end_span` mechanism.
+- [x] 2.2 Added a new "Setting Request-Scoped Context (`client_name`) for Multi-Client APIs" section: the use case, a middleware usage example, the explicit note that `client_name` is **not** a Loki label with the real query syntax (`{service_name="x"} | client_name="y"` known-service / `{service_name=~".+"} | client_name="y"` fleet-wide), and the client-registration scope boundary (never pass the raw API key, only the resolved name).
+- [x] 2.3 Stated plainly that `client_name` is optional/additive.
+- [x] 2.4 (found during implementation, not originally scoped) The same stale 8th `traceId` parameter also appeared in the **API Reference** entries for `sovdevLog`, `sovdevLogJobStatus`, and `sovdevLogJobProgress` — none of the three real exported functions have ever taken one (confirmed directly against `logger.ts`). Fixed all three, plus two remaining prose references (`Next Steps` table's now-broken anchor link, and the E2E example's "traceId correlation" phrasing) — a search for `traceId`/`sovdev_generate_trace_id`/`using-traceid` across the whole README now returns nothing.
+
+### Validation
+
+User reviewed the new/changed README sections — read clearly, query syntax is copy-pasteable, and no remaining stale references anywhere in the file (confirmed via `grep`, not just the sections directly touched).
 
 ### Validation
 
