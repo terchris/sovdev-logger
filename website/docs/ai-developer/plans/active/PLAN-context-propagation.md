@@ -107,23 +107,23 @@ Real query output shown above for both backends, not just "it works" — confirm
 
 ---
 
-## Phase 4: Dashboard update
+## Phase 4: Dashboard update — DONE
 
-The Grafana dashboard (`tools/dashboards/sovdev-logger-overview.json`) needs to reflect the new field too — flagged explicitly by the maintainer as something not to forget, since it's easy for a schema/library change like this to ship without the dashboard ever catching up.
+The Grafana dashboard (`tools/dashboards/sovdev-logger-overview.json`) needed to reflect the new field too — flagged explicitly by the maintainer as something not to forget, since it's easy for a schema/library change like this to ship without the dashboard ever catching up.
 
 `client_name` has the **exact same constraint `peer_service` already has** on this dashboard (confirmed directly, not assumed): not a real label, so it **cannot** use the `service_name` template-variable pattern (`sovdev-logger-overview.json:887-919`, a `query`-type variable backed by `label_values(sovdev_operations_total, service_name)` — this only works because `service_name` is an actual indexed label; the same query for `client_name` would return nothing). The dashboard already has a proven, working pattern for exactly this situation: `peer_service` is surfaced in the "Recent Errors" table purely via a Grafana `extractFields` transform (`source: "labels"`, `sovdev-logger-overview.json:795-801`) reading it out of the returned structured-metadata set, then renamed into a display column (`indexByName`/`renameByName`, lines 813-834) — not filtered/grouped in LogQL itself.
 
 ### Tasks
 
-- [ ] 4.1 Add `client_name` to the "Recent Errors" table's `extractFields` transform (`sovdev-logger-overview.json`), alongside `peer_service`, renamed to a "Client" column — following the exact established pattern, not inventing a new one.
-- [ ] 4.2 Decide (with the maintainer) whether a real filter is also wanted: a Grafana "Text box" (or "Custom") dashboard variable that plugs into each Loki panel's query as `| client_name=~"$client_name"` (defaulting to match-all) would give interactive filtering without needing `client_name` to be a real label — unlike `$service_name`'s variable, it can't be a dropdown auto-populated from known values (no `label_values()`-equivalent exists for structured metadata), so this is a genuine scope question, not just an implementation detail. Default recommendation: start with the display-only column (4.1) since it directly mirrors the already-proven `peer_service` pattern; treat the filterable variable as a follow-up only if actually wanted.
-- [ ] 4.3 Regenerate `sovdev-logger-overview-grafana-cloud.json` via `adapt-for-grafana-cloud.ts` (datasource UIDs rewritten, same content) — don't hand-edit the Cloud variant directly.
-- [ ] 4.4 Push the updated dashboard to UIS via `push-dashboard.ts` (works for local UIS per its README). Grafana Cloud is **not** pushed by script — per `tools/dashboards/README.md:32-49`, Cloud deployment is a manual Import via the UI using the regenerated `-grafana-cloud.json` file, because Cloud needs a Service Account token only the maintainer can mint.
-- [ ] 4.5 Update `tools/dashboards/README.md`'s "What's in the dashboard" section to mention the new "Client" column, keeping docs in sync with the actual dashboard content (same convention as the README updates in Phase 2).
+- [x] 4.1 Added `client_name` to the "Recent Errors" table's `indexByName`/`renameByName` transform config in `sovdev-logger-overview.json`, alongside `peer_service`, as a "Client" column (position 4, shifting `function_name`/`exception_type`/`exception_message`/`trace_id`/`span_id` down by one). `extractFields` itself needed no change — it already extracts everything from `source: "labels"` (which includes structured metadata), it just wasn't given a column position/name before now.
+- [x] 4.2 **Decision: display-only column only, no filter variable for now** — going with the plan's own default recommendation (mirrors the proven `peer_service` pattern exactly; a filterable variable would need a free-text/custom variable, not a dropdown, since there's no `label_values()`-equivalent for structured metadata). Revisit as a follow-up if actually wanted later.
+- [x] 4.3 Regenerated `sovdev-logger-overview-grafana-cloud.json` via `adapt-for-grafana-cloud.ts` — confirmed `client_name` present in the regenerated output, not hand-edited.
+- [x] 4.4 Pushed the updated dashboard to UIS via `push-dashboard.ts` — `✅ Pushed "Sovdev Logger - Full Overview" (uid: sovdev-logger-full) to http://grafana.localhost`. Grafana Cloud is still manual Import per the README (no Service Account token available to script this) — not done as part of this plan; the regenerated `-grafana-cloud.json` file is ready whenever the maintainer imports it by hand.
+- [x] 4.5 Updated `tools/dashboards/README.md`'s "What's in the dashboard" section to document the new "Client" column and why it can't be a template variable.
 
 ### Validation
 
-Screenshot or description of the updated "Recent Errors" table showing a real `client_name` value in the new column, from an actual query against real data (the same E2E run from Phase 3 works for this) — not just "the JSON was edited."
+Queried the exact LogQL expression the "Recent Errors" panel itself uses (`{service_name=~"$service_name"} | exception_type!="" | log_type="transaction"`) against real UIS data from the Phase 3 E2E run — both matching entries return `client_name: company-lookup-e2e-client` alongside `peer_service`/`exception_type`, confirming the new column will show real data, not just that the JSON was edited.
 
 ---
 

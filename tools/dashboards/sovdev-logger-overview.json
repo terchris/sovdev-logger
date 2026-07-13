@@ -815,16 +815,18 @@
               "timestamp": 1,
               "service_name": 2,
               "peer_service": 3,
-              "function_name": 4,
-              "exception_type": 5,
-              "exception_message": 6,
-              "trace_id": 7,
-              "span_id": 8
+              "client_name": 4,
+              "function_name": 5,
+              "exception_type": 6,
+              "exception_message": 7,
+              "trace_id": 8,
+              "span_id": 9
             },
             "renameByName": {
               "timestamp": "Timestamp",
               "service_name": "Service",
               "peer_service": "Peer Service",
+              "client_name": "Client",
               "function_name": "Function",
               "exception_type": "Exception Type",
               "exception_message": "Error Message",
