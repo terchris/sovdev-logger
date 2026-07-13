@@ -32,15 +32,15 @@ Adds `sovdev_set_context({ client_name })` to `@terchris/sovdev-logger`, so a se
 
 ---
 
-## Phase 1: Core implementation
+## Phase 1: Core implementation — DONE
 
 ### Tasks
 
 - [x] 1.1 Add `client_name` to the shared schema (`tools/validation/schemas/log-entry-schema.json`) — done during investigation, optional (not in `required`), confirmed valid JSON.
-- [ ] 1.2 In `typescript/src/logger.ts`, add a new `AsyncLocalStorage` instance parallel to `spanStorage` (e.g. `requestContextStorage = new AsyncLocalStorage<SovdevRequestContext>()`), with a small `SovdevRequestContext { client_name?: string }` interface — typed, not a loose `Record<string, unknown>` bag, consistent with the rest of the library's typed API surface. Extending it later (a new optional field) doesn't require touching this plan's design.
-- [ ] 1.3 Implement and export `sovdev_set_context(context: SovdevRequestContext): void`, calling `requestContextStorage.enterWith(context)` — mirrors `sovdev_start_span()`'s existing use of `spanStorage.enterWith()`.
-- [ ] 1.4 Update `write_log()` (and/or `create_log_entry()`, wherever `trace_id`/`span_id` are currently merged from `spanStorage` at `logger.ts:505-524`) to also read `requestContextStorage.getStore()` and merge `client_name` into the log entry when present. Absent when no context has been set for the current async chain.
-- [ ] 1.5 Export `sovdev_set_context` from `typescript/src/index.ts`.
+- [x] 1.2 In `typescript/src/logger.ts`, add a new `AsyncLocalStorage` instance parallel to `spanStorage` (`requestContextStorage = new AsyncLocalStorage<SovdevRequestContext>()`), with a `SovdevRequestContext { client_name?: string }` interface, exported alongside `structured_log_entry`.
+- [x] 1.3 Implement and export `sovdev_set_context(context: SovdevRequestContext): void`, calling `requestContextStorage.enterWith(context)` — mirrors `sovdev_start_span()`'s existing use of `spanStorage.enterWith()`, placed directly after `sovdev_end_span()`.
+- [x] 1.4 Updated `write_log()` to read `requestContextStorage.getStore()` right after the existing span-context block, merging `client_name` into the log entry only when present.
+- [x] 1.5 Exported `sovdev_set_context` and `SovdevRequestContext` from `typescript/src/index.ts`.
 
 ### Validation
 
@@ -48,7 +48,14 @@ Adds `sovdev_set_context({ client_name })` to `@terchris/sovdev-logger`, so a se
 cd typescript && npx tsc --noEmit && npm run lint && npm run build
 ```
 
-A small throwaway script confirms: calling `sovdev_set_context({ client_name: 'test' })` then `sovdev_log(...)` produces a log entry with `client_name: 'test'`; omitting the call produces a log entry with no `client_name` field at all (not `null`, not empty string — genuinely absent).
+All three clean. A throwaway script (`sovdev_initialize` → `sovdev_log` with no context set → `sovdev_set_context({ client_name: 'olla-test' })` → `sovdev_log` again → `sovdev_shutdown`, reading back the actual file log) confirmed, verified directly not assumed:
+
+```
+message='no context set'   has_client_name=False client_name=None
+message='context set'      has_client_name=True  client_name='olla-test'
+```
+
+`client_name` is genuinely absent (not present as a key at all) without context set, and present with the correct value when set — matching the acceptance criteria exactly.
 
 ---
 
