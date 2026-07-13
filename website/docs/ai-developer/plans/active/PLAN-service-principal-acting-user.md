@@ -72,16 +72,16 @@ Real test against Grafana Cloud (throwaway script, two `sovdev_set_context({ act
 
 ---
 
-## Phase 3: Documentation
+## Phase 3: Documentation — DONE
 
 ### Tasks
 
-- [ ] 3.1 Extend the README's "Setting Request-Scoped Context" section (added in `PLAN-context-propagation.md`) to cover `service_principal`/`acting_user` — the customer-facing-JWT vs. service-account scenarios, and the privacy note.
-- [ ] 3.2 Document the Grafana Cloud warning explicitly, and the recommendation to use a pseudonymous/internal ID for `acting_user` regardless of backend.
+- [x] 3.1 Added a new README section, "Setting `service_principal` and `acting_user` for Database-Backed APIs", right after the existing `client_name` section — covers the service-account vs. customer-facing-JWT scenarios, the zero-opinion pass-through scope boundary, and a "Next Steps" table row pointing to it.
+- [x] 3.2 Documented the Grafana Cloud warning explicitly (what triggers it, that it never fires against UIS), and the recommendation to use a pseudonymous/internal ID for `acting_user` regardless of backend.
 
 ### Validation
 
-User reviews the new README content reads clearly.
+README section added; content matches the design recap above and the shipped Phase 1/2 behavior exactly (field names, optionality, warning trigger condition).
 
 ---
 
