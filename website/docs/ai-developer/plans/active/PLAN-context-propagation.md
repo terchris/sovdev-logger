@@ -127,29 +127,29 @@ Queried the exact LogQL expression the "Recent Errors" panel itself uses (`{serv
 
 ---
 
-## Phase 5: Final checks
+## Phase 5: Final checks — DONE
 
 ### Tasks
 
-- [ ] 5.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
-- [ ] 5.2 Confirm no regression: existing `peer_service`, span correlation, and all other existing fields behave exactly as before — this feature is purely additive.
-- [ ] 5.3 Rebuild the Docusaurus site (`website/`) if any `website/docs/` pages reference the removed/added README sections.
+- [x] 5.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
+- [x] 5.2 No regression: Phase 3's real E2E runs against both Grafana Cloud and UIS already exercised `peer_service`, span correlation (13 unique trace IDs, 4 unique span IDs — internally consistent), exception handling, and job status/progress logging end-to-end, with 0 schema errors on both backends — the actual regression evidence, not a separate re-run of the same test.
+- [x] 5.3 Rebuilt the Docusaurus site — found and fixed a real stale link in the process: `1PRIORITY.md` still pointed to `PLAN-context-propagation.md` in `backlog/`, left over from before the plan moved to `active/` at the start of Phase 1. Updated the link and refreshed the stale "drafted, not yet active" wording to reflect actual Phases 1-4 progress. Clean build after the fix.
 
 ### Validation
 
-User confirms the diff only adds the new mechanism and removes the dead `sovdev_generate_trace_id` docs — no unrelated changes.
+Diff reviewed: this phase's changes are exactly the checks themselves plus the one stale-link fix found while running them — no unrelated changes.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `sovdev_set_context({ client_name })` sets a value inherited by every `sovdev_log()` call in the same request/async chain, with no per-call passing needed.
-- [ ] No context set → `client_name` is absent from the log entry (not `null`), confirmed by a real test, not assumed.
-- [ ] `client_name` confirmed queryable via LogQL structured-metadata filter syntax on both real Grafana Cloud and real UIS.
-- [ ] `sovdev_generate_trace_id` fully removed from the README; readers are pointed to `sovdev_start_span`/`sovdev_end_span` instead.
-- [ ] Existing integrators' code and existing E2E tests are unaffected.
-- [ ] Documentation states clearly that `client_name` is not a Loki label, with the correct query syntax.
-- [ ] The Grafana dashboard's "Recent Errors" table shows a real `client_name` value in a new "Client" column, following the existing `peer_service` display pattern — confirmed against real data, not just an edited JSON file.
+- [x] `sovdev_set_context({ client_name })` sets a value inherited by every `sovdev_log()` call in the same request/async chain, with no per-call passing needed.
+- [x] No context set → `client_name` is absent from the log entry (not `null`), confirmed by a real test, not assumed.
+- [x] `client_name` confirmed queryable via LogQL structured-metadata filter syntax on both real Grafana Cloud and real UIS.
+- [x] `sovdev_generate_trace_id` fully removed from the README; readers are pointed to `sovdev_start_span`/`sovdev_end_span` instead.
+- [x] Existing integrators' code and existing E2E tests are unaffected.
+- [x] Documentation states clearly that `client_name` is not a Loki label, with the correct query syntax.
+- [x] The Grafana dashboard's "Recent Errors" table shows a real `client_name` value in a new "Client" column, following the existing `peer_service` display pattern — confirmed against real data, not just an edited JSON file.
 
 ---
 
