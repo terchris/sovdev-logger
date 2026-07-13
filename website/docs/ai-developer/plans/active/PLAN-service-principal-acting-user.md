@@ -31,14 +31,14 @@ Extends `sovdev_set_context()` with two more request-scoped fields — `service_
 
 ---
 
-## Phase 1: Schema and core implementation
+## Phase 1: Schema and core implementation — DONE
 
 ### Tasks
 
-- [ ] 1.1 Add `service_principal` and `acting_user` to the shared schema (`tools/validation/schemas/log-entry-schema.json`), both optional (not in `required`), following `client_name`'s exact style.
-- [ ] 1.2 Add both fields to the `SovdevRequestContext` interface and the `structured_log_entry` interface in `typescript/src/logger.ts`.
-- [ ] 1.3 Update `write_log()` to read both new fields from `requestContextStorage.getStore()` and merge them into the log entry when present — same pattern as the existing `client_name` block.
-- [ ] 1.4 **Critical, learned from `PLAN-context-propagation.md`'s Phase 3 bug**: `write_log()` building the `structured_log_entry` is *not* the same code path that exports to OTLP. `open_telemetry_winston_transport.log()` has its own separate, hardcoded attribute list (`logger.ts`, the `attributes` object built from `info.*`) that must *also* get explicit `if (info.service_principal) {...}` / `if (info.acting_user) {...}` blocks, or these fields will silently reach the file log but never reach Grafana Cloud/UIS — exactly what happened to `client_name` the first time. Do not skip this.
+- [x] 1.1 Added `service_principal` and `acting_user` to the shared schema (`tools/validation/schemas/log-entry-schema.json`), both optional, following `client_name`'s exact style.
+- [x] 1.2 Added both fields to the `SovdevRequestContext` interface and the `structured_log_entry` interface in `typescript/src/logger.ts`.
+- [x] 1.3 Updated `write_log()` to read both new fields from `requestContextStorage.getStore()` and merge them into the log entry when present.
+- [x] 1.4 **Critical, learned from `PLAN-context-propagation.md`'s Phase 3 bug**: also added explicit `if (info.service_principal) {...}` / `if (info.acting_user) {...}` blocks to `open_telemetry_winston_transport.log()`'s separate attribute list — the actual OTLP export path, distinct from `write_log()`'s file-log path. This is exactly where `client_name` was silently dropped from OTLP the first time; not repeated here.
 
 ### Validation
 
@@ -46,7 +46,15 @@ Extends `sovdev_set_context()` with two more request-scoped fields — `service_
 cd typescript && npx tsc --noEmit && npm run lint && npm run build
 ```
 
-A throwaway script proves both fields survive to a real backend from the start (not repeating the mistake of only checking the local file log): `sovdev_set_context({ service_principal: '...', acting_user: '...' })`, `sovdev_log(...)`, query the real backend directly for both fields — do this in Phase 1, not deferred to a later "end-to-end" phase, specifically because that's where the `client_name` bug was found last time (too late, after the file-log-only check looked fine).
+All three clean. Proved both fields survive to a **real backend**, in this phase, not deferred: a throwaway script (`sovdev_set_context({ client_name, service_principal, acting_user })` → `sovdev_log(...)` → query directly) run against **both** real UIS and real Grafana Cloud. Identical result on both:
+
+```
+client_name: test-client
+service_principal: test-db-svc
+acting_user: test-acting-user
+```
+
+All three fields present via the real OTLP export path on both backends — confirms Phase 1.4's fix actually works, not just that the code compiles.
 
 ---
 
