@@ -115,18 +115,22 @@ Grafana Cloud run additionally printed the Phase 2 privacy warning once; UIS run
 ### Tasks
 
 - [x] 5.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
-- [x] 5.2 Confirmed no regression to `client_name` — real throwaway script, 3 separate `sovdev_set_context()` calls each setting exactly one of the three fields, run against real UIS. All three fields present in the resulting log entry, extending `PLAN-context-merge-semantics.md`'s 2-field proof to 3.
+- [x] 5.2 Confirmed no regression to `client_name` — real throwaway script, 3 separate `sovdev_set_context()` calls each setting exactly one of the three fields, run against real UIS, extending `PLAN-context-merge-semantics.md`'s 2-field proof to 3.
 - [x] 5.3 Rebuilt the Docusaurus site.
 
 ### Validation
 
-All three checks clean; 3-field merge regression confirmed via real backend:
+All three checks clean.
+
+**Caught and fixed a real gap in the validation itself, not just the code**: the first run of the 3-field merge test was executed directly on the host Mac using `test/e2e/company-lookup/.env`, whose `OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=http://host.docker.internal/...` only resolves *inside* the devcontainer. The SDK reported "flushed successfully" regardless — a false positive, the OTLP batch exporter swallows the DNS failure internally rather than surfacing it through `sovdev_shutdown()`. The file log looked correct (all three fields present) even though nothing reached UIS. Confirmed the gap directly: `curl` to `host.docker.internal` from the host Mac returns `Could not resolve host`. Re-ran the identical script via `dct-exec` (inside the devcontainer, where the hostname resolves), then queried real UIS Loki directly — only then confirmed the data actually landed:
 
 ```
 client_name: merge-test-client
 service_principal: merge-test-db-svc
 acting_user: merge-test-user
 ```
+
+Lesson for future validation in this repo: a script's own "success" log lines are not proof of delivery — the wrong network context can make OTLP export silently no-op. Only a direct query against the real backend counts as verified.
 
 ---
 
