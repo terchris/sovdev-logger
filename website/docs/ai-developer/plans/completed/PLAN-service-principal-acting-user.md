@@ -6,13 +6,15 @@ Extends `sovdev_set_context()` with two more request-scoped fields — `service_
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Active
+## Status: Completed
 
 **Goal**: Ship `service_principal`/`acting_user` in `sovdev_set_context()`, wired correctly into both the file-log path and the OTLP export path (the exact place `client_name` was missed the first time), plus the Grafana Cloud privacy warning, validated end-to-end against both real backends.
 
+**Shipped**: All 5 phases complete, verified against both real Grafana Cloud and real UIS throughout, including a 3-field merge regression test and a clean cross-language comparator run against Python.
+
 **Last Updated**: 2026-07-13
 
-**Investigation**: [INVESTIGATE-service-principal-acting-user.md](../backlog/INVESTIGATE-service-principal-acting-user.md) — all questions resolved. The merge-vs-replace correctness fix it also surfaced already shipped separately as [`PLAN-context-merge-semantics.md`](../completed/PLAN-context-merge-semantics.md); this plan only adds the two new fields and the warning.
+**Investigation**: [INVESTIGATE-service-principal-acting-user.md](INVESTIGATE-service-principal-acting-user.md) — all questions resolved. The merge-vs-replace correctness fix it also surfaced already shipped separately as [`PLAN-context-merge-semantics.md`](PLAN-context-merge-semantics.md); this plan only adds the two new fields and the warning.
 
 **Decisions confirmed just before drafting this plan**:
 - Field name: `acting_user` (not `acting_user_id`).
@@ -108,27 +110,33 @@ Grafana Cloud run additionally printed the Phase 2 privacy warning once; UIS run
 
 ---
 
-## Phase 5: Final checks
+## Phase 5: Final checks — DONE
 
 ### Tasks
 
-- [ ] 5.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
-- [ ] 5.2 Confirm no regression to `client_name` (still works, still merges correctly alongside the two new fields — a real test of 3+ fields set across multiple calls, extending `PLAN-context-merge-semantics.md`'s 2-field test).
-- [ ] 5.3 Rebuild the Docusaurus site.
+- [x] 5.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
+- [x] 5.2 Confirmed no regression to `client_name` — real throwaway script, 3 separate `sovdev_set_context()` calls each setting exactly one of the three fields, run against real UIS. All three fields present in the resulting log entry, extending `PLAN-context-merge-semantics.md`'s 2-field proof to 3.
+- [x] 5.3 Rebuilt the Docusaurus site.
 
 ### Validation
 
-User confirms the diff matches this plan's scope — no unrelated changes, and dashboard work genuinely deferred, not half-started.
+All three checks clean; 3-field merge regression confirmed via real backend:
+
+```
+client_name: merge-test-client
+service_principal: merge-test-db-svc
+acting_user: merge-test-user
+```
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `service_principal` and `acting_user` both work via `sovdev_set_context()`, confirmed present in real log entries on both Grafana Cloud and UIS.
-- [ ] Both fields are optional/additive — no impact on existing `client_name`-only integrators.
-- [ ] The Grafana Cloud privacy warning fires exactly once per process when `acting_user` is set against that backend, and never fires against UIS.
-- [ ] `client_name`, `service_principal`, and `acting_user` all correctly coexist via the merge mechanism (extends, doesn't regress, `PLAN-context-merge-semantics.md`).
-- [ ] Both fields reach the *actual OTLP-exported* log entry, verified directly against a real backend in Phase 1 — not assumed from the file log alone.
+- [x] `service_principal` and `acting_user` both work via `sovdev_set_context()`, confirmed present in real log entries on both Grafana Cloud and UIS.
+- [x] Both fields are optional/additive — no impact on existing `client_name`-only integrators.
+- [x] The Grafana Cloud privacy warning fires exactly once per process when `acting_user` is set against that backend, and never fires against UIS.
+- [x] `client_name`, `service_principal`, and `acting_user` all correctly coexist via the merge mechanism (extends, doesn't regress, `PLAN-context-merge-semantics.md`).
+- [x] Both fields reach the *actual OTLP-exported* log entry, verified directly against a real backend in Phase 1 — not assumed from the file log alone.
 
 ---
 
