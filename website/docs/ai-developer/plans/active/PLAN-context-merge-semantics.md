@@ -6,7 +6,7 @@
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Active
 
 **Goal**: Change `sovdev_set_context()` so each call merges into the existing request context rather than replacing it wholesale, with a real test proving the fix.
 
