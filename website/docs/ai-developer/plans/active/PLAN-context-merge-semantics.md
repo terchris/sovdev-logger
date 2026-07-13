@@ -70,6 +70,14 @@ Confirms both cases directly: a different key from a second call is preserved al
 - [x] 2.1 `npx tsc --noEmit`, `npm run lint`, `npm run build` all clean.
 - [x] 2.2 Re-ran the E2E test (`company-lookup.ts`) against real UIS via `dct-exec` — schema validation passed (17/17 + 2/2), and a direct Loki query confirmed `client_name` still appears correctly for the existing single-call case: `{service_name="sovdev-test-company-lookup-typescript"} | client_name="company-lookup-e2e-client"` → 5 matches. No regression.
 - [x] 2.3 Rebuilt the Docusaurus site — caught and fixed one broken link in the process (this plan's own reference to `INVESTIGATE-service-principal-acting-user.md` used a bare relative path instead of `../backlog/...`).
+- [x] 2.4 (requested before merging, not originally scoped as its own task) The Phase 1 debug-print verification proved the merge *mechanism* but not that it survives all the way through the real write path to a real backend, and only one backend (implicitly) had been exercised. Closed both gaps: a throwaway script made 4 real `sovdev_log()` calls interleaved with 3 `sovdev_set_context()` calls (no context set → set `client_name` → set an unrelated key → set an overlapping `client_name` again), run against **both** real Grafana Cloud and real UIS, each log line queried back and sorted by actual timestamp (not stream order, which isn't chronological once entries land in different streams). Identical, correct result on both backends:
+  ```
+  no_context                     client_name=None
+  after_first_set                client_name='first-client'
+  after_different_key_set        client_name='first-client'   <- the exact bug scenario: survives
+  after_overlapping_key_set      client_name='second-client'
+  ```
+  This is the real proof the fix works end-to-end, not just in an isolated debug print.
 
 ### Validation
 
