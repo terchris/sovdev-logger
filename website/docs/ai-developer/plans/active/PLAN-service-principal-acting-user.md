@@ -85,18 +85,26 @@ README section added; content matches the design recap above and the shipped Pha
 
 ---
 
-## Phase 4: End-to-end validation against real backends
+## Phase 4: End-to-end validation against real backends — DONE
 
 ### Tasks
 
-- [ ] 4.1 Extend `company-lookup.ts`'s `sovdev_set_context()` call to include `service_principal` (and optionally `acting_user`, noting the same `compare-log-files.py` `EXCLUDED_FIELDS` consideration `client_name` needed).
-- [ ] 4.2 Run the E2E test against real Grafana Cloud — confirm both fields present and queryable via LogQL structured metadata, and confirm the privacy warning fires once.
-- [ ] 4.3 Run the same against real UIS — confirm both fields present, and confirm the warning does *not* fire.
-- [ ] 4.4 Confirm existing schema validation and cross-language comparison exclusions still pass.
+- [x] 4.1 Extended `company-lookup.ts`'s `sovdev_set_context()` call to include `service_principal` and `acting_user`, and added both to `compare-log-files.py`'s `EXCLUDED_FIELDS`, matching `client_name`'s existing pattern/comment style exactly.
+- [x] 4.2 Ran the E2E test against real Grafana Cloud — both fields present in the actual OTLP-exported log entry (queried directly via `tools/validation/grafana-cloud/query-loki.ts`), and the privacy warning fired exactly once in the test run's own output.
+- [x] 4.3 Ran the same against real UIS — both fields present (queried directly via `tools/validation/uis/query-loki.sh`), and the warning did *not* fire.
+- [x] 4.4 Confirmed schema validation (`run-test.sh`'s built-in validation step) passes on both backend runs, and the cross-language comparator (`compare-with-master.sh python`) still reports a clean match against Python's E2E output with the three TypeScript-only fields excluded.
 
 ### Validation
 
-Real query output for both fields on both backends, matching the standard every prior phase in this feature area has used.
+Real query output, both fields, both backends:
+
+```
+client_name: company-lookup-e2e-client
+service_principal: company-lookup-db-svc
+acting_user: company-lookup-e2e-user
+```
+
+Grafana Cloud run additionally printed the Phase 2 privacy warning once; UIS run did not print it at all. `compare-with-master.sh python` reported `✅ MATCH — output is identical to TypeScript's` across all 17 log entries, confirming the exclusions work and no unrelated field drifted.
 
 ---
 
