@@ -6,7 +6,7 @@ Extends `sovdev_set_context()` with two more request-scoped fields — `service_
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog
+## Status: Active
 
 **Goal**: Ship `service_principal`/`acting_user` in `sovdev_set_context()`, wired correctly into both the file-log path and the OTLP export path (the exact place `client_name` was missed the first time), plus the Grafana Cloud privacy warning, validated end-to-end against both real backends.
 
