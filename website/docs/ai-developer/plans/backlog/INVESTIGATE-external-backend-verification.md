@@ -14,6 +14,8 @@ Local UIS verification (Loki/Tempo/Prometheus via `kubectl run curlimages/curl` 
 
 **Last Updated**: 2026-07-09 (research complete via five parallel investigations — three per-backend, two on SDK tooling; sequencing and tooling language not yet confirmed by maintainer)
 
+**Referenced by**: [`INVESTIGATE-context-propagation.md`](INVESTIGATE-context-propagation.md)'s **[Q12]** — the new client-name/dataset context fields being designed there must stay backend-agnostic in how they're emitted, since Azure Monitor and Google Cloud (this doc's scope) are on the roadmap for the same fleet-wide filtering need, not just Grafana Cloud/UIS.
+
 ---
 
 ## Questions to Answer
