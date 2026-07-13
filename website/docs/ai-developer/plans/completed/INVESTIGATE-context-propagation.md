@@ -6,11 +6,12 @@ Explores how to let integrators set a cross-cutting field (which frontend/client
 > - [WORKFLOW.md](../../WORKFLOW.md) - The implementation process
 > - [PLANS.md](../../PLANS.md) - Plan structure and best practices
 
-## Status: Backlog — all decisions resolved, ready for `PLAN-context-propagation.md`
+## Status: Completed — shipped via `PLAN-context-propagation.md`
 
 **Goal**: Decide the API shape and underlying mechanism for request-scoped context propagation (grounded in ollacrm's real client-identity need), confirm how the new field is actually queryable in Grafana (resolved: structured metadata, not an index label — see Decisions Resolved), and whether `sovdev_generate_trace_id` (documented in the README, never shipped) should be implemented, folded into this mechanism, or removed from the docs.
 
 **Last Updated**: 2026-07-13
+**Completed**: 2026-07-13 — its one child plan, [`PLAN-context-propagation.md`](PLAN-context-propagation.md), shipped (all 5 phases, validated end-to-end against real Grafana Cloud and UIS). Moving here per this repo's convention: an INVESTIGATE stays in `backlog/` for its whole life and only moves to `completed/` once every child PLAN it spawned has shipped.
 
 ---
 
@@ -41,7 +42,7 @@ This rules out reusing `peer_service` for client identity — confirmed directly
 
 ## Multi-backend implication: this must also work on Azure and Google Cloud later
 
-The maintainer has flagged that Azure Monitor and Google Cloud (already scoped in [`INVESTIGATE-external-backend-verification.md`](INVESTIGATE-external-backend-verification.md), not yet built) will eventually need this same client-name filtering, not just Grafana Cloud/UIS. That earlier investigation already did real, verified research on how each backend's *query* side works, which changes the shape of **[Q8]** below:
+The maintainer has flagged that Azure Monitor and Google Cloud (already scoped in [`INVESTIGATE-external-backend-verification.md`](../backlog/INVESTIGATE-external-backend-verification.md), not yet built) will eventually need this same client-name filtering, not just Grafana Cloud/UIS. That earlier investigation already did real, verified research on how each backend's *query* side works, which changes the shape of **[Q8]** below:
 
 - **Grafana Cloud/UIS (Loki)**: **resolved by direct testing, see [Q8]** — `client_name` can never become a true index label (only resource attributes can), but both backends already handle it well as structured metadata, including fleet-wide search, with no config change needed. Slower than a true label at real scale, but functional.
 - **Azure Monitor**: queried via KQL against Log Analytics tables (`OTelLogs`/`OTelTraces`) — a traditional structured-table model, not a label/stream-selector split. Any column in the table is directly filterable by KQL; there's no confirmed equivalent of "must be promoted to a label to be cheap to query" the way Loki requires (per `INVESTIGATE-external-backend-verification.md`'s comparison table). This needs its own direct verification when Azure integration actually happens, not an assumption drawn from the Loki case — but *if* confirmed, it means Loki's label-promotion requirement may be the unusual case here, not the default across backends.
